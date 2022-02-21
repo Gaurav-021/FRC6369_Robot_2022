@@ -71,7 +71,15 @@ public class Robot extends TimedRobot {
   private Robot_Cargo_State cargo_status = Robot_Cargo_State.Idle;
   private final Timer state4_Timer = new Timer();
   private double tx_angle;
-  private double ty_angle = -1000.0;
+  private double ty_angle = -1000.0; //target degrees above the center of the camera 
+
+  private final double cameraPitch = 10; //degrees above horizon ||
+  private final double pupilCameraHeight = 12.8; //inches above the ground ||
+  private final double goalHeight = 104; //inches above the ground to the top of the goal
+  private double distanceFromGoal = 0; //inches parallel from shooter to the center of the goal
+  private final double goalRadius = 26.7716535; //inches 
+  private final double pupilDistanceToShooter = -6; //inches, in relation to distance from goal ||
+  private final double desiredDistanceFromGoal = 132; //inches, distance from the shooter to the center of goal (114.75in - 24in) ||
 
   @Override
   public void robotInit() {
@@ -135,22 +143,23 @@ public class Robot extends TimedRobot {
   public void autonomousInit() {
     state4_Timer.start();
     NetworkTableInstance.getDefault().getTable("limelight").getEntry("pipeline").setNumber(4);
-    cargo_status = Robot_Cargo_State.Cargo_awaiting_shooter;
+    cargo_status = Robot_Cargo_State.Cargo_being_intaked;
   }
 
   @Override
   public void autonomousPeriodic() {
     tx_angle = NetworkTableInstance.getDefault().getTable("limelight").getEntry("tx").getDouble(0);
     ty_angle = NetworkTableInstance.getDefault().getTable("limelight").getEntry("ty").getDouble(0);
-    if (camAngletoDistance(ty_angle) <= 10){
+    if (camAngletoDistance(ty_angle) <= desiredDistanceFromGoal){
       tarzan_robot.tankDrive(-1*0.8, -1*0.8);
     }
-    else if (camAngletoDistance(ty_angle) > 10){
-      if (Math.abs(tx_angle) > 0.1){
+    else if (camAngletoDistance(ty_angle) > desiredDistanceFromGoal){
+      if (Math.abs(tx_angle) > 0.5){
         tarzan_robot.tankDrive(-1*tx_angle, 1*tx_angle);
       }
       else{
         tarzan_robot.tankDrive(0, 0);
+        cargo_status = Robot_Cargo_State.Cargo_awaiting_shooter;
       }
     }
     if (cargo_status == Robot_Cargo_State.Cargo_awaiting_shooter){
@@ -286,8 +295,8 @@ public class Robot extends TimedRobot {
   }
 
   // This method converts a target pitch angle into an estimated robot distance away from the target
-  double camAngletoDistance(double camAngle) {
-    return 0.0;
+  double camAngletoDistance(double a2) {
+    return ((goalHeight - pupilCameraHeight)/(Math.tan(Math.toRadians(cameraPitch + a2))) + pupilDistanceToShooter + goalRadius);
   }
 
 }
